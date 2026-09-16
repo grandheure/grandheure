@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Programme GrandHeure — 1ère Édition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+<style>
+  :root{
+    --bg:#0B0E12; --bg-panel:#12161C; --bg-panel-2:#181D24; --line:#262B33;
+    --text:#ECEAE4; --text-muted:#98A0AA; --gold:#C79A46; --gold-soft:#E4C687;
+    --green:#6E9B72; --red:#B5605B;
+    --serif:'Newsreader', serif; --sans:'IBM Plex Sans', sans-serif;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.6; -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; }
+  img,svg{ display:block; max-width:100%; }
+  @media (prefers-reduced-motion: reduce){ *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; } html{ scroll-behavior:auto; } }
+
+  .wrap{ max-width:1120px; margin:0 auto; padding:0 32px; }
+  section{ position:relative; }
+
+  .topbar{ position:fixed; top:0; left:0; right:0; z-index:40; display:flex; align-items:center; justify-content:space-between; padding:22px 32px; background:linear-gradient(to bottom, rgba(11,14,18,0.92), rgba(11,14,18,0)); pointer-events:none; }
+  .topbar *{ pointer-events:auto; }
+  .brand{ font-family:var(--serif); font-style:italic; font-size:1.15rem; color:var(--gold-soft); }
+  .topnav{ display:flex; gap:22px; font-size:0.86rem; color:var(--text-muted); }
+  .topnav a{ text-decoration:none; transition:color .2s ease; }
+  .topnav a:hover{ color:var(--text); }
+  @media (max-width:820px){ .topnav{ display:none; } }
+
+  .hero{ min-height:100svh; display:flex; align-items:flex-end; overflow:hidden;
+    background: radial-gradient(ellipse 900px 500px at 78% 22%, rgba(199,154,70,0.35), transparent 60%), linear-gradient(180deg, #090B0E 0%, #12181D 38%, #2C4548 62%, #6B5A3C 84%, #C79A46 100%); }
+  .hero-mountains{ position:absolute; inset:0; width:100%; height:100%; }
+  .hero-inner{ position:relative; z-index:2; width:100%; padding:0 32px 80px; max-width:1120px; margin:0 auto; }
+  .hero-eyebrow-line{ width:44px; height:2px; background:var(--gold-soft); margin-bottom:22px; opacity:0; transform:scaleX(0); transform-origin:left; animation:growLine 0.9s 0.15s cubic-bezier(.2,.8,.2,1) forwards; }
+  h1.hero-title{ font-family:var(--serif); font-weight:500; font-size:clamp(2.4rem, 5.6vw, 4.6rem); line-height:1.06; max-width:12ch; color:#F5F1E9; opacity:0; transform:translateY(18px); animation:riseIn 0.9s 0.35s cubic-bezier(.2,.8,.2,1) forwards; }
+  h1.hero-title em{ font-style:italic; color:var(--gold-soft); }
+  .hero-sub{ margin-top:22px; max-width:46ch; font-size:1.05rem; color:#D8D3C6; opacity:0; transform:translateY(16px); animation:riseIn 0.9s 0.55s cubic-bezier(.2,.8,.2,1) forwards; }
+  .hero-cta{ margin-top:32px; display:flex; gap:16px; flex-wrap:wrap; opacity:0; transform:translateY(14px); animation:riseIn 0.9s 0.75s cubic-bezier(.2,.8,.2,1) forwards; }
+  .hero-countdown{ margin-top:36px; display:flex; gap:22px; flex-wrap:wrap; opacity:0; transform:translateY(14px); animation:riseIn 0.9s 0.95s cubic-bezier(.2,.8,.2,1) forwards; }
+  .cd-box{ text-align:center; }
+  .cd-box .cd-n{ font-family:var(--serif); font-size:2rem; color:var(--gold-soft); line-height:1; }
+  .cd-box .cd-l{ color:#CFC9BC; font-size:0.7rem; margin-top:4px; text-transform:uppercase; letter-spacing:0.06em; }
+  @keyframes riseIn{ to{ opacity:1; transform:translateY(0); } }
+  @keyframes growLine{ to{ opacity:1; transform:scaleX(1); } }
+
+  .btn{ display:inline-flex; align-items:center; gap:10px; padding:14px 26px; font-family:var(--sans); font-size:0.92rem; font-weight:500; border-radius:2px; text-decoration:none; cursor:pointer; border:1px solid transparent; transition:transform .2s ease, background .2s ease, border-color .2s ease; }
+  .btn:hover{ transform:translateY(-1px); }
+  .btn-primary{ background:var(--gold-soft); color:#1A1305; }
+  .btn-primary:hover{ background:#EFD8A0; }
+  .btn-ghost{ border-color:rgba(245,241,233,0.35); color:#F5F1E9; }
+  .btn-ghost:hover{ border-color:#F5F1E9; }
+  .btn-small{ padding:9px 16px; font-size:0.82rem; }
+  .btn svg{ width:17px; height:17px; }
+
+  .intro{ padding:110px 0 90px; border-bottom:1px solid var(--line); }
+  .intro-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:70px; align-items:start; }
+  @media (max-width:800px){ .intro-grid{ grid-template-columns:1fr; gap:40px; } }
+  .intro-grid h2{ font-family:var(--serif); font-weight:500; font-style:italic; font-size:1.9rem; line-height:1.3; color:var(--gold-soft); }
+  .intro-grid p{ color:var(--text-muted); margin-top:18px; max-width:52ch; }
+  .pillars{ display:flex; flex-direction:column; gap:22px; }
+  .pillar{ display:flex; gap:16px; }
+  .pillar-icon{ flex:none; width:34px; height:34px; color:var(--gold-soft); }
+  .pillar h3{ font-size:0.98rem; font-weight:600; margin-bottom:3px; }
+  .pillar p{ color:var(--text-muted); font-size:0.88rem; }
+
+  .method{ padding:90px 0; border-bottom:1px solid var(--line); }
+  .method-head{ max-width:56ch; margin-bottom:56px; }
+  .method-head h2{ font-family:var(--serif); font-weight:500; font-size:2rem; }
+  .method-head p{ color:var(--text-muted); margin-top:14px; }
+  .method-cols{ display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:var(--line); border:1px solid var(--line); }
+  @media (max-width:980px){ .method-cols{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:560px){ .method-cols{ grid-template-columns:1fr; } }
+  .method-col{ background:var(--bg-panel); padding:30px 24px; }
+  .method-col .m-ico{ width:26px; height:26px; color:var(--gold); margin-bottom:16px; }
+  .method-col h3{ font-size:1rem; margin-bottom:8px; }
+  .method-col p{ color:var(--text-muted); font-size:0.86rem; }
+
+  .compte{ padding:100px 0; border-bottom:1px solid var(--line); background:var(--bg-panel); }
+  .compte-box{ display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:start; }
+  @media (max-width:800px){ .compte-box{ grid-template-columns:1fr; gap:34px; } }
+  .compte-box h2{ font-family:var(--serif); font-weight:500; font-size:2rem; }
+  .compte-box p.lead{ color:var(--text-muted); margin-top:14px; max-width:48ch; }
+  .banner{ margin-top:22px; padding:14px 16px; border:1px solid var(--gold); background:rgba(199,154,70,0.08); font-size:0.85rem; color:var(--gold-soft); display:none; }
+  .banner.show{ display:block; }
+  .form-field{ margin-bottom:16px; }
+  .form-field label{ display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px; }
+  .form-field input{ width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); padding:12px 14px; font-family:var(--sans); font-size:0.95rem; }
+  .form-field input:focus{ outline:none; border-color:var(--gold); }
+  #compte-welcome{ display:none; }
+  #compte-welcome.show{ display:block; }
+  #compte-form.hide{ display:none; }
+  .welcome-msg{ font-size:1.05rem; }
+  .welcome-name{ font-family:var(--serif); font-style:italic; color:var(--gold-soft); font-size:1.3rem; }
+  .locked-msg{ padding:80px 0; border-bottom:1px solid var(--line); }
+  .locked-box{ text-align:center; max-width:560px; margin:0 auto; }
+  .locked-box h2{ font-family:var(--serif); font-weight:500; font-size:1.5rem; line-height:1.4; }
+  .locked-box p{ color:var(--text-muted); margin:16px 0 26px; }
+  .compte-stats{ display:flex; gap:34px; margin-top:22px; flex-wrap:wrap; }
+  .compte-stat .n{ font-family:var(--serif); font-size:1.9rem; color:var(--gold-soft); }
+  .compte-stat .l{ color:var(--text-muted); font-size:0.78rem; margin-top:2px; }
+  .link-row{ display:flex; gap:18px; flex-wrap:wrap; margin-top:20px; }
+  .link-btn{ color:var(--text-muted); font-size:0.8rem; text-decoration:underline; cursor:pointer; background:none; border:none; font-family:var(--sans); }
+  .notif-toggle{ margin-top:18px; }
+
+  .calendrier{ padding:100px 0; border-bottom:1px solid var(--line); }
+  .cal-head{ display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap; margin-bottom:34px; }
+  .cal-head h2{ font-family:var(--serif); font-weight:500; font-size:2.1rem; max-width:56ch; }
+  .cal-head p{ color:var(--text-muted); margin-top:12px; max-width:56ch; }
+  .cal-progress{ text-align:right; min-width:180px; }
+  .cal-progress .num{ font-family:var(--serif); font-size:2.4rem; color:var(--gold-soft); line-height:1; }
+  .cal-progress .lbl{ color:var(--text-muted); font-size:0.8rem; margin-top:4px; }
+  .cal-track{ width:180px; height:4px; background:var(--line); margin-top:10px; overflow:hidden; }
+  .cal-track-fill{ height:100%; background:var(--gold-soft); width:0%; transition:width .4s ease; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(10,1fr); gap:8px; }
+  @media (max-width:820px){ .cal-grid{ grid-template-columns:repeat(6,1fr); } }
+  @media (max-width:520px){ .cal-grid{ grid-template-columns:repeat(5,1fr); } }
+  .cal-tile{ position:relative; background:var(--bg-panel); border:1px solid var(--line); aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:border-color .2s ease, background .2s ease; }
+  .cal-tile:hover{ border-color:var(--gold); }
+  .cal-tile .cal-day-no{ font-family:var(--serif); font-size:1.05rem; color:var(--text); }
+  .cal-tile .cal-check{ position:absolute; top:5px; right:5px; width:10px; height:10px; border-radius:50%; background:var(--line); }
+  .cal-tile.done{ background:rgba(110,155,114,0.12); border-color:var(--green); }
+  .cal-tile.done .cal-check{ background:var(--green); }
+  .cal-tile.done .cal-day-no{ color:var(--green); }
+  .cal-tile.today{ border-color:var(--gold-soft); box-shadow:0 0 0 1px var(--gold-soft) inset; }
+  .cal-legend{ display:flex; gap:28px; margin-top:20px; color:var(--text-muted); font-size:0.8rem; flex-wrap:wrap; }
+  .cal-legend span{ display:inline-flex; align-items:center; gap:7px; }
+  .cal-legend i{ width:10px; height:10px; display:inline-block; border-radius:50%; background:var(--line); }
+  .cal-legend i.on{ background:var(--green); }
+  .cal-note{ color:var(--text-muted); font-size:0.78rem; margin-top:18px; max-width:64ch; }
+  .cal-finance{ margin-top:36px; padding-top:28px; border-top:1px solid var(--line); display:flex; gap:40px; flex-wrap:wrap; align-items:center; }
+  .cal-finance .n{ font-family:var(--serif); font-size:1.7rem; color:var(--gold-soft); }
+  .cal-finance .l{ color:var(--text-muted); font-size:0.78rem; margin-top:2px; }
+
+  .parcours{ padding:100px 0; border-bottom:1px solid var(--line); }
+  .parcours-head{ max-width:60ch; margin-bottom:20px; }
+  .parcours-head h2{ font-family:var(--serif); font-weight:500; font-size:2.1rem; }
+  .parcours-head p{ color:var(--text-muted); margin-top:14px; }
+  .week{ margin-top:64px; }
+  .week-head{ display:flex; align-items:baseline; gap:16px; margin-bottom:26px; }
+  .week-tag{ font-family:var(--serif); font-style:italic; color:var(--gold-soft); font-size:1.5rem; }
+  .week-range{ color:var(--text-muted); font-size:0.85rem; }
+  .week-line{ flex:1; height:1px; background:var(--line); }
+  .days{ position:relative; padding-left:34px; }
+  .days::before{ content:''; position:absolute; left:9px; top:6px; bottom:6px; width:1px; background:var(--line); }
+  .day{ position:relative; margin-bottom:2px; scroll-margin-top:110px; }
+  .day-num{ position:absolute; left:-34px; top:14px; width:20px; height:20px; border-radius:50%; background:var(--bg); border:1px solid var(--gold); color:var(--gold-soft); font-size:0.66rem; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .day-toggle{ width:100%; text-align:left; background:none; border:none; border-bottom:1px solid var(--line); padding:14px 0; display:flex; align-items:center; justify-content:space-between; gap:16px; cursor:pointer; color:var(--text); font-family:var(--sans); font-size:0.98rem; }
+  .day-toggle .jour-label{ color:var(--text-muted); font-size:0.82rem; margin-right:10px; }
+  .day-toggle .chev{ flex:none; width:16px; height:16px; color:var(--text-muted); transition:transform .3s ease; }
+  .day.open .day-toggle .chev{ transform:rotate(45deg); color:var(--gold-soft); }
+  .day.flash{ animation:flashHi 1.4s ease; }
+  @keyframes flashHi{ 0%{ background:rgba(199,154,70,0.16);} 100%{ background:transparent; } }
+  .day-body{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .35s ease; }
+  .day.open .day-body{ grid-template-rows:1fr; }
+  .day-body-inner{ overflow:hidden; }
+  .day-content{ padding:6px 0 26px; display:flex; flex-direction:column; gap:16px; }
+  .day-item{ font-size:0.9rem; }
+  .day-item .d-label{ display:block; color:var(--gold-soft); font-size:0.76rem; font-weight:500; margin-bottom:5px; }
+  .day-item p{ color:var(--text-muted); margin-bottom:8px; }
+  .chk{ display:inline-flex; align-items:center; gap:8px; font-size:0.84rem; color:var(--text); cursor:pointer; }
+  .chk input{ width:15px; height:15px; accent-color:var(--gold); cursor:pointer; }
+  .day-item textarea, .day-item input[type=text], .day-item input[type=number]{
+    width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text);
+    padding:10px 12px; font-family:var(--sans); font-size:0.88rem; resize:vertical;
+  }
+  .day-item textarea{ min-height:64px; }
+  .day-item input:focus, .day-item textarea:focus{ outline:none; border-color:var(--gold); }
+  .save-hint{ font-size:0.72rem; color:var(--text-muted); margin-top:4px; opacity:0; transition:opacity .3s ease; }
+  .save-hint.show{ opacity:1; }
+
+  .principles{ padding:100px 0; background:var(--bg-panel); border-bottom:1px solid var(--line); }
+  .principles-grid{ display:grid; grid-template-columns:1fr 1fr; gap:50px 70px; }
+  @media (max-width:760px){ .principles-grid{ grid-template-columns:1fr; } }
+  .principle{ padding-top:20px; border-top:1px solid var(--line); }
+  .principle p.line{ font-family:var(--serif); font-style:italic; font-size:1.3rem; color:#F0ECE2; line-height:1.4; }
+  .principle p.note{ color:var(--text-muted); font-size:0.88rem; margin-top:10px; }
+
+  .contact{ padding:110px 0 90px; }
+  .contact-box{ background:var(--bg-panel-2); border:1px solid var(--line); padding:56px; display:grid; grid-template-columns:1.1fr 0.9fr; gap:50px; }
+  @media (max-width:760px){ .contact-box{ grid-template-columns:1fr; padding:36px 26px; } }
+  .contact-box h2{ font-family:var(--serif); font-weight:500; font-size:2rem; line-height:1.25; }
+  .contact-box .em{ color:var(--gold-soft); font-style:italic; }
+  .contact-box > div:first-child p{ color:var(--text-muted); margin-top:16px; max-width:44ch; }
+  .contact-details{ display:flex; flex-direction:column; gap:22px; }
+  .contact-row{ display:flex; gap:16px; align-items:flex-start; border-top:1px solid var(--line); padding-top:18px; }
+  .contact-row:first-child{ border-top:none; padding-top:0; }
+  .contact-row .ico{ flex:none; width:22px; height:22px; color:var(--gold-soft); margin-top:2px; }
+  .contact-row .ct-label{ font-size:0.78rem; color:var(--text-muted); margin-bottom:3px; }
+  .contact-row .ct-value{ font-size:1.15rem; font-weight:500; letter-spacing:0.02em; }
+  .contact-row a.ct-value{ text-decoration:none; }
+  .contact-row a.ct-value:hover{ color:var(--gold-soft); }
+
+  /* ---------- admin ---------- */
+  .admin{ padding:100px 0 120px; }
+  .admin-head{ max-width:60ch; margin-bottom:40px; }
+  .admin-head h2{ font-family:var(--serif); font-weight:500; font-size:2rem; }
+  .admin-head p{ color:var(--text-muted); margin-top:12px; }
+  .admin-login{ max-width:360px; }
+  .admin-dash{ display:none; }
+  .admin-dash.show{ display:block; }
+  .admin-login.hide{ display:none; }
+  table.admin-table{ width:100%; border-collapse:collapse; margin-top:10px; }
+  table.admin-table th{ text-align:left; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; padding:10px 12px; border-bottom:1px solid var(--line); }
+  table.admin-table td{ padding:12px; border-bottom:1px solid var(--line); font-size:0.9rem; }
+  table.admin-table tr:hover td{ background:var(--bg-panel); }
+  .admin-err{ color:var(--red); font-size:0.85rem; margin-top:10px; display:none; }
+  .admin-err.show{ display:block; }
+  .admin-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+  .admin-summary{ display:flex; gap:1px; background:var(--line); border:1px solid var(--line); margin-bottom:34px; }
+  .as-box{ flex:1; min-width:120px; background:var(--bg-panel); padding:20px 18px; }
+  .as-box .as-n{ font-family:var(--serif); font-size:1.6rem; color:var(--gold-soft); }
+  .as-box .as-l{ color:var(--text-muted); font-size:0.74rem; margin-top:4px; }
+  table.admin-table tr{ cursor:pointer; }
+  .admin-detail-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; flex-wrap:wrap; margin:18px 0 26px; }
+  .admin-detail-head h3{ font-family:var(--serif); font-size:1.4rem; }
+  .admin-detail-head p{ color:var(--text-muted); font-size:0.85rem; margin-top:4px; }
+  .ad-stats{ display:flex; gap:30px; flex-wrap:wrap; margin-bottom:28px; }
+  .ad-stats .n{ font-family:var(--serif); font-size:1.5rem; color:var(--gold-soft); }
+  .ad-stats .l{ color:var(--text-muted); font-size:0.74rem; margin-top:2px; }
+  table.admin-detail-table{ width:100%; border-collapse:collapse; font-size:0.82rem; }
+  table.admin-detail-table th, table.admin-detail-table td{ border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; color:var(--text-muted); }
+  table.admin-detail-table th{ color:var(--gold-soft); font-weight:500; background:var(--bg-panel); }
+
+  footer{ padding:36px 0 50px; text-align:center; color:var(--text-muted); font-size:0.82rem; }
+  .sticky-call{ position:fixed; right:18px; bottom:18px; z-index:50; background:var(--gold-soft); color:#1A1305; width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; box-shadow:0 6px 18px rgba(0,0,0,0.4); }
+  .sticky-call svg{ width:22px; height:22px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="brand">GrandHeure — 1ère Édition</span>
+  <nav class="topnav">
+    <a href="#compte">Mon espace</a>
+    <a href="#calendrier" class="nav-gated">Calendrier</a>
+    <a href="#parcours" class="nav-gated">Les 30 jours</a>
+    <a href="#contact">Contact</a>
+    <a href="#admin">Admin</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <svg class="hero-mountains" viewBox="0 0 1400 900" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="0,900 0,560 220,380 430,520 640,340 900,540 1120,400 1400,560 1400,900" fill="#0B1013" opacity="0.9"/>
+    <polygon points="0,900 0,660 260,500 520,640 760,460 1020,640 1250,520 1400,640 1400,900" fill="#0E1518" opacity="0.85"/>
+    <polygon points="0,900 0,760 300,660 600,760 880,640 1150,760 1400,700 1400,900" fill="#121A1E"/>
+    <circle cx="1080" cy="230" r="70" fill="#F3D9A0" opacity="0.9"/>
+  </svg>
+  <div class="hero-inner">
+    <div class="hero-eyebrow-line"></div>
+    <h1 class="hero-title">Programme <em>GrandHeure</em> — 1ère Édition</h1>
+    <p class="hero-sub">Trente jours de méditation, sport, lecture, travail sur soi et objectifs personnels — à suivre directement sur ce site, avec votre progression sauvegardée pour que vous puissiez la retrouver à tout moment.</p>
+    <div class="hero-cta">
+      <a href="https://wa.me/242069775173?text=Bonjour%2C%20je%20souhaite%20rejoindre%20le%20Programme%20GrandHeure." target="_blank" rel="noopener" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.5 8.5 0 01-12.9 7.3L4 20l1.3-4a8.5 8.5 0 1115.7-4.5z"/></svg>
+        Rejoindre sur WhatsApp
+      </a>
+      <a href="#compte" class="btn btn-ghost">S'inscrire à la formation</a>
+    </div>
+    <div class="hero-countdown" id="hero-countdown">
+      <div class="cd-box"><div class="cd-n" id="cd-days">--</div><div class="cd-l">jours</div></div>
+      <div class="cd-box"><div class="cd-n" id="cd-hours">--</div><div class="cd-l">heures</div></div>
+      <div class="cd-box"><div class="cd-n" id="cd-min">--</div><div class="cd-l">minutes</div></div>
+      <div class="cd-box"><div class="cd-n" id="cd-sec">--</div><div class="cd-l">secondes</div></div>
+      <div class="cd-box" style="text-align:left; align-self:center;"><div style="color:#CFC9BC; font-size:0.85rem;">avant le début, le <strong style="color:var(--gold-soft);">20 septembre 2026</strong></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="intro">
+  <div class="wrap intro-grid">
+    <div>
+      <h2>La discipline ne se décide pas un matin. Elle se construit un jour à la fois.</h2>
+      <p>GrandHeure n'est pas une liste de conseils : c'est une progression quotidienne autour de cinq piliers — méditation, sport, lecture, travail sur soi et objectifs personnels — avec un suivi de vos dépenses. Tout se lit et se coche directement ici, sur le site, et votre objectif personnel peut être ajusté à tout moment selon votre situation.</p>
+    </div>
+    <div class="pillars">
+      <div class="pillar"><svg class="pillar-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="20" cy="20" r="13"/><path d="M20 12v8l6 4"/></svg><div><h3>Méditation</h3><p>Quelques minutes chaque jour, en progression.</p></div></div>
+      <div class="pillar"><svg class="pillar-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 30l6-10 5 6 9-14"/><circle cx="30" cy="12" r="2" fill="currentColor" stroke="none"/></svg><div><h3>Sport</h3><p>10 pompes minimum, et plus pour qui veut aller loin.</p></div></div>
+      <div class="pillar"><svg class="pillar-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 8c4-2 9-2 13 0v24c-4-2-9-2-13 0V8z"/><path d="M34 8c-4-2-9-2-13 0v24c4-2 9-2 13 0V8z"/></svg><div><h3>Lecture</h3><p>Un texte court, à lire directement sur le site.</p></div></div>
+      <div class="pillar"><svg class="pillar-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 30V16l8-8 8 8v14"/><path d="M17 30v-8h6v8"/></svg><div><h3>Travail sur soi</h3><p>Une question de journal, avec réponse enregistrée.</p></div></div>
+      <div class="pillar"><svg class="pillar-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="20" cy="20" r="14"/><circle cx="20" cy="20" r="7.5"/><circle cx="20" cy="20" r="1.6" fill="currentColor" stroke="none"/></svg><div><h3>Objectifs & finances</h3><p>Une action vers votre but, modifiable à tout moment.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="method" id="methode">
+  <div class="wrap">
+    <div class="method-head"><h2>Cinq piliers, chaque jour</h2><p>Le même déroulé, tous les jours, pour que la méthode devienne un réflexe.</p></div>
+    <div class="method-cols">
+      <div class="method-col"><svg class="m-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><h3>Méditation</h3><p>5 à 15 minutes selon la semaine.</p></div>
+      <div class="method-col"><svg class="m-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 19l4-7 3 4 6-9"/></svg><h3>Sport</h3><p>10 pompes minimum chaque jour. 15 minutes au choix pour qui veut plus.</p></div>
+      <div class="method-col"><svg class="m-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5c2-1 5-1 7 0v14c-2-1-5-1-7 0V5z"/><path d="M20 5c-2-1-5-1-7 0v14c2-1 5-1 7 0V5z"/></svg><h3>Lecture</h3><p>Insérée directement sur le site, jour par jour.</p></div>
+      <div class="method-col"><svg class="m-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4h9l4 4v12H6z"/><path d="M9 12h6M9 16h6"/></svg><h3>Travail sur soi</h3><p>Une question, une réponse écrite et sauvegardée.</p></div>
+      <div class="method-col"><svg class="m-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg><h3>Objectif & finances</h3><p>Une action vers votre but, et vos dépenses notées.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= COMPTE ================= -->
+<section class="compte" id="compte">
+  <div class="wrap compte-box">
+    <div>
+      <h2>Inscription à la formation</h2>
+      <p class="lead">L'accès au Programme GrandHeure — calendrier, lectures et exercices quotidiens — est réservé aux personnes inscrites. Créez votre accès en quelques secondes pour que les portes de la formation s'ouvrent, et retrouvez votre progression depuis n'importe quel appareil.</p>
+      <div class="banner" id="storage-banner">La connexion à la base de données n'est pas encore configurée sur cet hébergement. Vos réponses resteront visibles seulement pendant cette visite.</div>
+      <div class="link-row">
+        <button class="link-btn" id="switch-account">Ce n'est pas vous ? Se connecter avec un autre numéro</button>
+      </div>
+      <div class="notif-toggle">
+        <button class="btn btn-ghost btn-small" id="notif-btn">Activer les rappels quotidiens</button>
+      </div>
+    </div>
+    <div>
+      <div id="compte-form">
+        <div class="form-field"><label for="f-name">Votre nom</label><input type="text" id="f-name" placeholder="Ex : Jean Mabiala"></div>
+        <div class="form-field"><label for="f-phone">Votre téléphone (sert d'identifiant)</label><input type="text" id="f-phone" placeholder="Ex : 069775173"></div>
+        <button class="btn btn-primary" id="f-submit" type="button">Je m'inscris et j'accède à la formation</button>
+      </div>
+      <div id="compte-welcome">
+        <p class="welcome-msg">Bienvenue, <span class="welcome-name" id="welcome-name"></span> — les portes du Programme GrandHeure vous sont ouvertes.</p>
+        <div class="compte-stats">
+          <div class="compte-stat"><div class="n" id="w-days">0/30</div><div class="l">jours accomplis</div></div>
+          <div class="compte-stat"><div class="n" id="w-spent">0</div><div class="l">FCFA dépensés au total</div></div>
+        </div>
+        <button class="btn btn-ghost btn-small" id="report-btn" style="margin-top:20px;">Générer mon rapport complet</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ACCÈS VERROUILLÉ (avant inscription) ================= -->
+<div id="programme-locked">
+  <section class="locked-msg">
+    <div class="wrap locked-box">
+      <h2>Le calendrier et le contenu quotidien s'affichent ici une fois votre inscription confirmée.</h2>
+      <p>Créez votre accès ci-dessus pour découvrir votre calendrier des 30 jours et commencer la formation.</p>
+      <a href="#compte" class="btn btn-primary">S'inscrire maintenant</a>
+    </div>
+  </section>
+</div>
+
+<!-- ================= CONTENU DE LA FORMATION (après inscription) ================= -->
+<div id="programme-content" style="display:none;">
+
+<!-- ================= CALENDRIER ================= -->
+<section class="calendrier" id="calendrier">
+  <div class="wrap">
+    <div class="cal-head">
+      <div>
+        <h2>Votre calendrier des 30 jours</h2>
+        <p>Touchez un numéro pour ouvrir directement le programme complet de ce jour, plus bas. Le jour entouré en clair correspond à la date du jour.</p>
+      </div>
+      <div class="cal-progress">
+        <div class="num" id="cal-count">0/30</div>
+        <div class="lbl">jours accomplis</div>
+        <div class="cal-track"><div class="cal-track-fill" id="cal-track-fill"></div></div>
+      </div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-legend"><span><i></i> jour à faire</span><span><i class="on"></i> jour accompli</span></div>
+    <div class="cal-finance">
+      <div><div class="n" id="fin-total">0 FCFA</div><div class="l">total dépensé ce mois</div></div>
+      <div><div class="n" id="fin-avg">0 FCFA</div><div class="l">moyenne par jour renseigné</div></div>
+    </div>
+    <p class="cal-note">Un jour est marqué « accompli » une fois la lecture, la méditation et le sport cochés dans le détail du jour. Toutes vos réponses sont sauvegardées automatiquement à chaque saisie.</p>
+  </div>
+</section>
+
+<!-- ================= PARCOURS ================= -->
+<section class="parcours" id="parcours">
+  <div class="wrap">
+    <div class="parcours-head">
+      <h2>Le détail, jour par jour</h2>
+      <p>Quatre semaines, quatre étapes de l'ascension. Chaque jour se lit et se complète directement ici.</p>
+    </div>
+    <div class="week"><div class="week-head"><span class="week-tag">Semaine 1</span><span class="week-range">Les fondations — jours 1 à 7</span><span class="week-line"></span></div><div class="days" id="days-week-1"></div></div>
+    <div class="week"><div class="week-head"><span class="week-tag">Semaine 2</span><span class="week-range">Le corps — jours 8 à 14</span><span class="week-line"></span></div><div class="days" id="days-week-2"></div></div>
+    <div class="week"><div class="week-head"><span class="week-tag">Semaine 3</span><span class="week-range">L'esprit — jours 15 à 21</span><span class="week-line"></span></div><div class="days" id="days-week-3"></div></div>
+    <div class="week"><div class="week-head"><span class="week-tag">Semaine 4</span><span class="week-range">L'action — jours 22 à 30</span><span class="week-line"></span></div><div class="days" id="days-week-4"></div></div>
+  </div>
+</section>
+
+</div>
+<!-- fin #programme-content -->
+
+<section class="principles">
+  <div class="wrap principles-grid">
+    <div class="principle"><p class="line">On ne devient pas discipliné en attendant d'en avoir envie.</p><p class="note">La motivation suit l'action ; elle ne la précède presque jamais.</p></div>
+    <div class="principle"><p class="line">Un jour manqué ne casse rien. Deux jours manqués créent une habitude.</p><p class="note">L'objectif n'est pas la perfection, c'est de ne jamais rater deux fois de suite.</p></div>
+    <div class="principle"><p class="line">La rigueur se voit dans les gestes que personne ne regarde.</p><p class="note">Ce que vous faites seul, sans preuve à montrer, est ce qui vous construit vraiment.</p></div>
+    <div class="principle"><p class="line">Le sommet n'est pas la fin. C'est le premier jour d'un nouveau système.</p><p class="note">Les trente jours donnent la méthode ; à vous de la faire vivre au-delà.</p></div>
+  </div>
+</section>
+
+<section class="contact" id="contact">
+  <div class="wrap">
+    <div class="contact-box">
+      <div>
+        <h2>Rejoindre <span class="em">GrandHeure</span></h2>
+        <p>Ce programme est proposé gratuitement, par conviction personnelle. Si cette initiative vous touche et que vous souhaitez la soutenir, vous pouvez le faire librement — ce n'est jamais une condition pour participer.</p>
+      </div>
+      <div class="contact-details">
+        <div class="contact-row"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 11.5a8.5 8.5 0 01-12.9 7.3L4 20l1.3-4a8.5 8.5 0 1115.7-4.5z"/></svg><div><div class="ct-label">WhatsApp</div><a class="ct-value" href="https://wa.me/242069775173?text=Bonjour%2C%20je%20souhaite%20rejoindre%20le%20Programme%20GrandHeure." target="_blank" rel="noopener">Écrire sur WhatsApp</a></div></div>
+        <div class="contact-row"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5c0-1 1-2 2-2h2l2 5-2 1c1 3 3 5 6 6l1-2 5 2v2c0 1-1 2-2 2C10 19 4 13 4 5z"/></svg><div><div class="ct-label">Téléphone</div><a class="ct-value" href="tel:+242069775173">069 775 173</a></div></div>
+        <div class="contact-row"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 18h6"/></svg><div><div class="ct-label">Soutenir l'initiative (libre)</div><span class="ct-value">Mobile Money — 069 775 173</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ADMIN ================= -->
+<section class="admin" id="admin">
+  <div class="wrap">
+    <div class="admin-head">
+      <h2>Espace admin</h2>
+    </div>
+    <div class="admin-login" id="admin-login">
+      <div class="form-field"><label for="a-user">Identifiant</label><input type="text" id="a-user" placeholder="Identifiant" autocomplete="username"></div>
+      <div class="form-field"><label for="a-pass">Mot de passe</label><input type="password" id="a-pass" autocomplete="current-password"></div>
+      <button class="btn btn-primary" id="a-submit" type="button">Se connecter</button>
+      <p class="admin-err" id="a-err">Identifiants incorrects.</p>
+    </div>
+    <div class="admin-dash" id="admin-dash">
+      <div class="admin-top">
+        <div>Inscrits : <strong id="admin-count">0</strong></div>
+        <button class="btn btn-ghost btn-small" id="a-logout">Se déconnecter</button>
+      </div>
+
+      <div class="admin-summary" id="admin-summary">
+        <div class="as-box"><div class="as-n" id="as-inscrits">0</div><div class="as-l">inscrits</div></div>
+        <div class="as-box"><div class="as-n" id="as-completion">0%</div><div class="as-l">taux de complétion moyen</div></div>
+        <div class="as-box"><div class="as-n" id="as-finished">0</div><div class="as-l">ont terminé les 30 jours</div></div>
+        <div class="as-box"><div class="as-n" id="as-total">0 FCFA</div><div class="as-l">total dépensé, tous comptes</div></div>
+      </div>
+
+      <div id="admin-list-view">
+        <table class="admin-table">
+          <thead><tr><th>Nom</th><th>Téléphone</th><th>Jours accomplis</th><th>Total dépensé</th><th></th></tr></thead>
+          <tbody id="admin-tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="admin-detail-view" style="display:none;">
+        <button class="link-btn" id="admin-back">← Retour à la liste</button>
+        <div id="admin-detail-content"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>Programme GrandHeure — 1ère Édition · Contact : 069 775 173</footer>
+
+<a class="sticky-call" href="https://wa.me/242069775173?text=Bonjour%2C%20je%20souhaite%20rejoindre%20le%20Programme%20GrandHeure." target="_blank" rel="noopener" aria-label="Contacter sur WhatsApp">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.5 8.5 0 01-12.9 7.3L4 20l1.3-4a8.5 8.5 0 1115.7-4.5z"/></svg>
+</a>
+
+<script>
+/* =====================================================================
+   CONFIGURATION FIREBASE — à remplacer par les clés de VOTRE projet
+   (Console Firebase > Paramètres du projet > Vos applications > Web)
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyDEShvt33HH1H5Ts4R0yv0AHx4nNxSTWHo",
+  authDomain: "pgm-grandheure-1ere-edition.firebaseapp.com",
+  projectId: "pgm-grandheure-1ere-edition",
+  storageBucket: "pgm-grandheure-1ere-edition.firebasestorage.app",
+  messagingSenderId: "593588762160",
+  appId: "1:593588762160:web:7c6898540733a914b6dff5"
+};
+const ADMIN_USERNAME = "Royal MAK"; // identifiant saisi sur le site
+const ADMIN_EMAIL = "royalmak@grandheure.app"; // e-mail réel à créer dans Firebase Authentication, associé au mot de passe RoyalM2620
+const PROGRAM_START = new Date("2026-09-20T00:00:00");
+
+let fbReady = false, db = null, auth = null;
+try{
+  if(firebaseConfig.apiKey !== "REMPLACEZ_MOI"){
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    auth = firebase.auth();
+    fbReady = true;
+  }
+}catch(e){ console.error('Firebase init error', e); }
+
+/* ============ DONNÉES DU PROGRAMME ============ */
+const PROGRAMME = [
+{day:1,week:1,title:"Pourquoi",lecture:"La discipline ne commence pas par une envie, elle commence par une raison. Avant de changer une seule habitude, il faut savoir pourquoi on le fait — pas pour plaire à quelqu'un, pas parce qu'il le faudrait, mais parce que cette raison vous appartient. Une volonté sans raison claire s'épuise au premier obstacle ; une raison claire, elle, survit aux mauvais jours.",journal:"Écrivez les trois raisons profondes qui vous poussent à devenir plus discipliné.",objectif:"Définissez précisément votre objectif du mois, en une phrase claire et mesurable."},
+{day:2,week:1,title:"L'environnement",lecture:"On croit que la volonté suffit, mais l'environnement décide souvent avant nous. Un téléphone posé à portée de main, une pièce en désordre : chacun de ces détails pousse discrètement vers le mauvais choix. Changer son environnement, c'est retirer les tentations avant d'avoir à leur résister.",journal:"Qu'est-ce qui vous distrait le plus au quotidien ?",objectif:"Notez la toute première étape concrète vers votre objectif."},
+{day:3,week:1,title:"Le lit",lecture:"Faire son lit ne change rien au monde extérieur, mais cela change immédiatement votre rapport à la journée. C'est la première tâche accomplie, la première preuve que vous tenez parole envers vous-même. Un lit fait est un signal envoyé à votre propre esprit.",journal:"Qu'avez-vous accompli avant midi aujourd'hui ?",objectif:"Bloquez 15 minutes dans votre agenda cette semaine pour avancer sur votre objectif."},
+{day:4,week:1,title:"L'heure de lever",lecture:"Les premières minutes de la journée appartiennent rarement à celui qui les vit vraiment. Se lever à l'heure décidée, sans négociation, est un acte de discipline discret mais puissant : reprendre le contrôle du tout premier moment de la journée.",journal:"Qu'est-ce qui vous a coûté le plus d'effort ce matin ?",objectif:"Partagez votre objectif à une personne de confiance."},
+{day:5,week:1,title:"Le « non »",lecture:"Résister à une tentation est épuisant ; refuser consciemment l'est beaucoup moins. La différence tient à une décision prise à l'avance : au lieu de négocier à chaque instant, on a déjà tranché la question.",journal:"Quelle habitude avez-vous consciemment refusée aujourd'hui ?",objectif:"Listez les obstacles probables sur la route de votre objectif."},
+{day:6,week:1,title:"Le suivi",lecture:"Ce qui n'est pas suivi finit par se perdre dans le flou des bonnes intentions. Un simple tableau, une case cochée chaque soir, transforme une intention vague en une preuve concrète de régularité.",journal:"Qu'est-ce que votre calendrier de suivi révèle déjà sur vous ?",objectif:"Préparez une solution concrète à l'obstacle principal identifié hier."},
+{day:7,week:1,title:"Bilan de la semaine 1",lecture:"Une semaine de discipline ne se juge pas seulement au nombre de jours réussis, mais à ce qu'elle vous a appris sur vous-même. Ce premier bilan est un miroir honnête, destiné à ajuster la suite.",journal:"Bilan écrit : ce qui a fonctionné cette semaine, ce qui a été difficile.",objectif:"Ajustez votre objectif si nécessaire, à la lumière de cette première semaine."},
+{day:8,week:2,title:"Le mouvement",lecture:"Le corps est souvent le premier terrain d'entraînement de la volonté, avant même l'esprit. Bouger quand on n'en a pas envie construit une capacité qui dépasse largement le sport lui-même.",journal:"Qu'est-ce que votre corps vous dit aujourd'hui ?",objectif:"Consacrez 10 minutes à une action concrète vers votre objectif."},
+{day:9,week:2,title:"Le souffle",lecture:"La respiration est le seul système du corps à la fois automatique et contrôlable à volonté. Ralentir son souffle envoie au corps un signal clair : il n'y a pas d'urgence.",journal:"Notez votre niveau d'énergie du jour, sur 10.",objectif:"Contactez une personne qui peut vous aider dans votre objectif."},
+{day:10,week:2,title:"Le froid",lecture:"L'inconfort volontaire, choisi et modéré, est un entraînement à la tolérance : il apprend au corps et à l'esprit que l'inconfort n'est pas dangereux, seulement désagréable.",journal:"Qu'avez-vous évité par confort aujourd'hui ?",objectif:"Faites une action inconfortable mais utile à votre objectif."},
+{day:11,week:2,title:"L'alimentation",lecture:"Chaque repas est une suite de petites décisions, souvent prises par automatisme. Ralentir, observer ce qu'on mange et pourquoi, redonne à ce moment sa dimension de choix.",journal:"Qu'avez-vous mangé par habitude plutôt que par faim ?",objectif:"Supprimez un obstacle qui vous prive d'énergie pour votre objectif."},
+{day:12,week:2,title:"Le sommeil",lecture:"Aucune discipline ne tient longtemps sur un sommeil négligé : c'est la base silencieuse sur laquelle repose toute la volonté du lendemain.",journal:"Qu'est-ce qui vous empêche de bien dormir ?",objectif:"Préparez dès ce soir votre environnement du lendemain."},
+{day:13,week:2,title:"L'effort supplémentaire",lecture:"L'esprit abandonne presque toujours avant que le corps n'atteigne sa véritable limite. Ce dernier effort, celui qu'on pourrait éviter sans que personne ne le sache, construit la discipline la plus solide.",journal:"Où avez-vous donné plus que prévu aujourd'hui ?",objectif:"Doublez l'effort sur une tâche liée à votre objectif."},
+{day:14,week:2,title:"Bilan de la semaine 2",lecture:"Cette deuxième semaine a demandé au corps ce que la première avait demandé à l'organisation. Le bilan est une observation honnête de votre capacité d'effort et de régularité.",journal:"Bilan écrit de la semaine 2 (le corps).",objectif:"Mesurez votre progression concrète depuis le jour 1."},
+{day:15,week:3,title:"Le silence",lecture:"Le silence extérieur révèle souvent le bruit intérieur. Rester dans ce silence sans fuir est un exercice de maîtrise de soi à part entière.",journal:"Qu'avez-vous appris du silence aujourd'hui ?",objectif:"Réfléchissez 10 minutes, sans écran, à votre objectif."},
+{day:16,week:3,title:"Le travail profond",lecture:"La concentration profonde, sans interruption, devient rare à mesure que les distractions se multiplient — ce qui la rend d'autant plus précieuse.",journal:"Qu'avez-vous accompli en concentration profonde aujourd'hui ?",objectif:"45 minutes de travail concentré, sans interruption, sur votre objectif."},
+{day:17,week:3,title:"La procrastination",lecture:"La tâche qu'on repousse le plus longtemps est souvent la plus importante. Commencer, même mal, même pour dix minutes, suffit généralement à briser la résistance.",journal:"Quelle tâche repoussez-vous depuis le plus longtemps ?",objectif:"Commencez cette tâche, liée à votre objectif, dans les dix prochaines minutes."},
+{day:18,week:3,title:"L'ordre",lecture:"Un espace en désordre entretient souvent un esprit dispersé. Ranger n'est pas une perte de temps : c'est créer les conditions physiques d'une clarté mentale plus durable.",journal:"Qu'est-ce que le désordre autour de vous révèle ?",objectif:"Rangez un espace lié à votre objectif : bureau, dossier, agenda."},
+{day:19,week:3,title:"L'essentiel",lecture:"Faire plus n'est pas toujours faire mieux. Identifier l'essentiel, et concentrer son énergie dessus, est une forme de discipline aussi exigeante que productive.",journal:"Qu'est-ce qui est vraiment essentiel pour vous cette semaine ?",objectif:"Éliminez les tâches non essentielles à votre objectif, gardez-en trois."},
+{day:20,week:3,title:"La patience",lecture:"La satisfaction immédiate est partout disponible, ce qui rend la patience d'autant plus rare et précieuse. Différer une envie entraîne la capacité à tenir un objectif sur la durée.",journal:"Qu'avez-vous envie d'obtenir tout de suite ?",objectif:"Reportez une décision impulsive liée à votre objectif."},
+{day:21,week:3,title:"Bilan de la semaine 3",lecture:"Cette semaine a travaillé l'esprit plus que le corps : la concentration, le silence, la patience. Les progrès de l'esprit sont souvent les moins visibles, et les plus décisifs.",journal:"Quelle différence entre le « vous » du jour 1 et celui d'aujourd'hui ?",objectif:"Comparez votre objectif de départ et son état actuel."},
+{day:22,week:4,title:"La régularité",lecture:"Les résultats spectaculaires viennent rarement d'un seul jour extraordinaire, mais de nombreux jours ordinaires répétés sans interruption.",journal:"Quelles trois habitudes ont le plus compté ce mois-ci ?",objectif:"Répétez l'action la plus efficace menée vers votre objectif."},
+{day:23,week:4,title:"La parole tenue",lecture:"L'intégrité personnelle se mesure surtout dans les petites promesses : celles qu'on se fait à soi-même, sans témoin, et qu'on tient malgré tout.",journal:"Quelle promesse avez-vous faite et tenue aujourd'hui ?",objectif:"Prenez un engagement clair, devant quelqu'un, sur votre objectif."},
+{day:24,week:4,title:"L'inconfort choisi",lecture:"Choisir volontairement la version la plus exigeante d'une tâche entraîne une capacité précieuse : celle de ne pas systématiquement chercher le chemin le plus court.",journal:"Quelle version difficile avez-vous choisie aujourd'hui ?",objectif:"Faites la version la plus exigeante d'une action vers votre objectif."},
+{day:25,week:4,title:"Le mentor intérieur",lecture:"Le futur vous, celui qui a déjà tenu cet engagement jusqu'au bout, a beaucoup à dire au vous d'aujourd'hui. Ce dialogue intérieur est l'un des outils les plus puissants de la discipline.",journal:"Écrivez une lettre de votre futur vous discipliné, adressée à vous aujourd'hui.",objectif:"Alignez une action du jour sur cette lettre."},
+{day:26,week:4,title:"La discrétion",lecture:"Une action accomplie sans qu'on en parle à personne a une valeur particulière : elle n'a pas besoin de reconnaissance pour exister.",journal:"Quelle action disciplinée avez-vous accomplie sans le dire à personne ?",objectif:"Avancez sur votre objectif sans chercher de reconnaissance."},
+{day:27,week:4,title:"La récupération active",lecture:"La discipline n'exclut pas le repos, elle l'organise. S'accorder une vraie pause fait autant partie du système que l'effort lui-même.",journal:"Qu'est-ce qu'un vrai repos représente pour vous ?",objectif:"Accordez-vous un temps de repos réel, sans culpabilité."},
+{day:28,week:4,title:"La transmission",lecture:"Expliquer à quelqu'un d'autre ce qu'on a appris oblige à clarifier sa propre pensée. Transmettre, c'est faire vivre ce mois de discipline au-delà de vous-même.",journal:"Quelle leçon du mois partageriez-vous à quelqu'un ?",objectif:"Enseignez une leçon liée à votre objectif à une personne de votre entourage."},
+{day:29,week:4,title:"La préparation du lendemain",lecture:"La qualité d'une journée se prépare souvent la veille : ce qu'on a rangé, anticipé, décidé à l'avance allège d'autant la charge du lendemain.",journal:"Qu'est-ce qui doit être prêt pour bien commencer demain ?",objectif:"Préparez matériellement le jour 30 de votre objectif."},
+{day:30,week:4,title:"Le sommet",lecture:"Trente jours ne suffisent pas à tout changer, mais ils suffisent à prouver quelque chose d'essentiel : que vous êtes capable de tenir un engagement envers vous-même. Le sommet n'est pas une fin, c'est le point de départ d'un système que vous choisissez de garder.",journal:"Comparez vos réponses du jour 1 et du jour 30.",objectif:"Écrivez cinq règles non négociables à garder au-delà de cette formation."}
+];
+
+function meditationMinutes(day){ if(day<=7) return 5; if(day<=14) return 8; if(day<=21) return 10; if(day<=26) return 12; return 15; }
+const SPORT_TEXT = "10 pompes minimum aujourd'hui, sans exception. Pour aller plus loin : 15 minutes de sport au choix (course, marche rapide, salle ou renforcement).";
+
+/* ============ COMPTE ACTUEL (Firestore, identifié par téléphone) ============ */
+function emptyData(){ return { profile:{ name:'', phone:'' }, days:{} }; }
+let appData = emptyData();
+let currentPhone = null;
+let saveTimer = null;
+
+function docRef(phone){ return db.collection('participants').doc(phone); }
+
+async function loadParticipant(phone){
+  if(!fbReady) return null;
+  try{
+    const snap = await docRef(phone).get();
+    return snap.exists ? snap.data() : null;
+  }catch(e){ console.error(e); return null; }
+}
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){
+    if(!currentPhone) return;
+    if(fbReady){ docRef(currentPhone).set(appData).catch(function(e){ console.error(e); }); }
+  }, 300);
+}
+
+/* ============ RENDU DES JOURS ============ */
+function chevSvg(){ return '<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2v12M2 8h12"/></svg>'; }
+function esc(s){ var d=document.createElement('div'); d.innerText = s || ''; return d.innerHTML; }
+
+function dayNode(item){
+  const saved = appData.days[item.day] || {};
+  const wrap = document.createElement('div');
+  wrap.className = 'day'; wrap.id = 'jour-' + item.day; wrap.dataset.day = item.day;
+  wrap.innerHTML =
+    '<span class="day-num">' + item.day + '</span>' +
+    '<button class="day-toggle"><span><span class="jour-label">Jour ' + item.day + '</span>' + item.title + '</span>' + chevSvg() + '</button>' +
+    '<div class="day-body"><div class="day-body-inner"><div class="day-content">' +
+      '<div class="day-item"><span class="d-label">Lecture du jour</span><p>' + item.lecture + '</p>' +
+        '<label class="chk"><input type="checkbox" data-field="lecture" ' + (saved.lecture?'checked':'') + '> Lecture faite</label></div>' +
+      '<div class="day-item"><span class="d-label">Méditation — ' + meditationMinutes(item.day) + ' min</span><p>Asseyez-vous au calme, respirez profondément, laissez les pensées passer sans les suivre.</p>' +
+        '<label class="chk"><input type="checkbox" data-field="meditation" ' + (saved.meditation?'checked':'') + '> Méditation faite</label></div>' +
+      '<div class="day-item"><span class="d-label">Sport</span><p>' + SPORT_TEXT + '</p>' +
+        '<label class="chk"><input type="checkbox" data-field="sport" ' + (saved.sport?'checked':'') + '> Sport fait</label></div>' +
+      '<div class="day-item"><span class="d-label">Travail sur soi</span><p>' + item.journal + '</p>' +
+        '<textarea data-field="journalText" placeholder="Écrivez votre réponse ici…">' + esc(saved.journalText) + '</textarea></div>' +
+      '<div class="day-item"><span class="d-label">Objectif personnel</span><p>' + item.objectif + '</p>' +
+        '<input type="text" data-field="objectifNote" placeholder="Notez l\'action réalisée…" value="' + esc(saved.objectifNote) + '"></div>' +
+      '<div class="day-item"><span class="d-label">Gestion financière</span><p>Combien avez-vous dépensé aujourd\'hui ?</p>' +
+        '<input type="number" min="0" data-field="depense" placeholder="Montant en FCFA" value="' + (saved.depense!=null?saved.depense:'') + '">' +
+        '<div class="save-hint">Enregistré</div></div>' +
+    '</div></div></div>';
+
+  wrap.querySelector('.day-toggle').addEventListener('click', function(){ wrap.classList.toggle('open'); });
+
+  wrap.querySelectorAll('[data-field]').forEach(function(el){
+    const field = el.dataset.field;
+    const isCheckbox = el.type === 'checkbox';
+    const evt = isCheckbox ? 'change' : 'input';
+    el.addEventListener(evt, function(){
+      if(!currentPhone){ alert('Créez d\'abord votre compte dans « Mon espace » pour enregistrer votre progression.'); el.blur(); return; }
+      if(!appData.days[item.day]) appData.days[item.day] = {};
+      appData.days[item.day][field] = isCheckbox ? el.checked : el.value;
+      scheduleSave();
+      updateDayDoneState(item.day);
+      updateSummaries();
+      const hint = wrap.querySelector('.save-hint');
+      if(hint){ hint.classList.add('show'); clearTimeout(hint._t); hint._t = setTimeout(function(){ hint.classList.remove('show'); }, 1200); }
+    });
+  });
+  return wrap;
+}
+
+function renderProgramme(){
+  [1,2,3,4].forEach(function(w){
+    const container = document.getElementById('days-week-' + w);
+    container.innerHTML = '';
+    PROGRAMME.filter(function(it){ return it.week === w; }).forEach(function(it){ container.appendChild(dayNode(it)); });
+  });
+}
+
+/* ============ CALENDRIER ============ */
+function currentProgramDay(){
+  const diff = Math.floor((new Date() - PROGRAM_START) / 86400000) + 1;
+  return (diff >= 1 && diff <= 30) ? diff : null;
+}
+function renderCalendar(){
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  const today = currentProgramDay();
+  for(let n=1; n<=30; n++){
+    const tile = document.createElement('div');
+    tile.className = 'cal-tile' + (n===today ? ' today' : '');
+    tile.id = 'tile-' + n;
+    tile.innerHTML = '<span class="cal-check"></span><span class="cal-day-no">' + n + '</span>';
+    tile.addEventListener('click', function(){
+      const target = document.getElementById('jour-' + n);
+      if(target){
+        target.classList.add('open');
+        target.scrollIntoView({ behavior:'smooth', block:'center' });
+        target.classList.add('flash');
+        setTimeout(function(){ target.classList.remove('flash'); }, 1400);
+      }
+    });
+    grid.appendChild(tile);
+  }
+  refreshCalendarState();
+}
+function isDayDone(day, data){
+  data = data || appData;
+  const d = data.days[day];
+  return !!(d && d.lecture && d.meditation && d.sport);
+}
+function updateDayDoneState(day){
+  const tile = document.getElementById('tile-' + day);
+  if(tile) tile.classList.toggle('done', isDayDone(day));
+}
+function refreshCalendarState(){ for(let n=1; n<=30; n++) updateDayDoneState(n); }
+
+function updateSummaries(){
+  let done = 0, totalSpent = 0, spentDaysCount = 0;
+  for(let n=1; n<=30; n++){
+    if(isDayDone(n)) done++;
+    const d = appData.days[n];
+    if(d && d.depense !== undefined && d.depense !== '' && !isNaN(d.depense)){ totalSpent += Number(d.depense); spentDaysCount++; }
+  }
+  document.getElementById('cal-count').textContent = done + '/30';
+  document.getElementById('cal-track-fill').style.width = (done/30*100) + '%';
+  document.getElementById('fin-total').textContent = totalSpent.toLocaleString('fr-FR') + ' FCFA';
+  document.getElementById('fin-avg').textContent = (spentDaysCount ? Math.round(totalSpent/spentDaysCount) : 0).toLocaleString('fr-FR') + ' FCFA';
+  document.getElementById('w-days').textContent = done + '/30';
+  document.getElementById('w-spent').textContent = totalSpent.toLocaleString('fr-FR');
+}
+
+/* ============ COMPTE UI ============ */
+function unlockProgramme(){
+  document.getElementById('programme-locked').style.display = 'none';
+  document.getElementById('programme-content').style.display = 'block';
+}
+function lockProgramme(){
+  document.getElementById('programme-locked').style.display = 'block';
+  document.getElementById('programme-content').style.display = 'none';
+}
+function showWelcome(){
+  document.getElementById('compte-form').classList.add('hide');
+  document.getElementById('compte-welcome').classList.add('show');
+  document.getElementById('welcome-name').textContent = appData.profile.name || currentPhone;
+  unlockProgramme();
+}
+function showForm(){
+  document.getElementById('compte-form').classList.remove('hide');
+  document.getElementById('compte-welcome').classList.remove('show');
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-phone').value = '';
+  lockProgramme();
+}
+
+document.getElementById('f-submit').addEventListener('click', async function(){
+  const name = document.getElementById('f-name').value.trim();
+  const phone = document.getElementById('f-phone').value.trim().replace(/\s+/g,'');
+  if(!phone){ alert('Merci de renseigner votre numéro de téléphone.'); return; }
+  currentPhone = phone;
+  localStorage.setItem('gh_phone', phone);
+  const existing = await loadParticipant(phone);
+  if(existing){ appData = existing; }
+  else{ appData = emptyData(); appData.profile.phone = phone; }
+  if(name) appData.profile.name = name;
+  if(fbReady) docRef(phone).set(appData).catch(function(e){ console.error(e); });
+  renderProgramme(); refreshCalendarState(); updateSummaries(); showWelcome();
+});
+
+document.getElementById('switch-account').addEventListener('click', function(){
+  localStorage.removeItem('gh_phone');
+  currentPhone = null; appData = emptyData();
+  renderProgramme(); refreshCalendarState(); updateSummaries(); showForm();
+});
+
+/* ============ NOTIFICATIONS (rappel local dans le navigateur) ============ */
+document.getElementById('notif-btn').addEventListener('click', function(){
+  if(!('Notification' in window)){ alert('Les notifications ne sont pas prises en charge par ce navigateur.'); return; }
+  Notification.requestPermission().then(function(perm){
+    if(perm === 'granted'){ alert('Rappels activés. Gardez cet onglet ouvert ou revenez chaque jour : un rappel s\'affichera si le jour du programme n\'est pas encore complété.'); checkDailyReminder(); }
+  });
+});
+function checkDailyReminder(){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  const day = currentProgramDay();
+  if(!day) return;
+  if(!isDayDone(day)){
+    new Notification('Programme GrandHeure', { body: 'Jour ' + day + ' : votre séance du jour vous attend (méditation, sport, lecture).' });
+  }
+}
+
+/* ============ COMPTE À REBOURS ============ */
+function updateCountdown(){
+  const now = new Date();
+  const diff = PROGRAM_START - now;
+  if(diff <= 0){ document.getElementById('hero-countdown').innerHTML = '<div style="color:var(--gold-soft); font-family:var(--serif); font-size:1.3rem;">Le programme a commencé — bon courage !</div>'; return; }
+  const d = Math.floor(diff/86400000);
+  const h = Math.floor(diff%86400000/3600000);
+  const m = Math.floor(diff%3600000/60000);
+  const s = Math.floor(diff%60000/1000);
+  document.getElementById('cd-days').textContent = d;
+  document.getElementById('cd-hours').textContent = String(h).padStart(2,'0');
+  document.getElementById('cd-min').textContent = String(m).padStart(2,'0');
+  document.getElementById('cd-sec').textContent = String(s).padStart(2,'0');
+}
+
+/* ============ RAPPORT ============ */
+function buildReportHtml(data){
+  const p = data.profile || {};
+  let rows = '';
+  PROGRAMME.forEach(function(item){
+    const d = data.days[item.day] || {};
+    rows += '<tr>' +
+      '<td>' + item.day + '</td><td>' + item.title + '</td>' +
+      '<td>' + (d.lecture?'✓':'—') + '</td><td>' + (d.meditation?'✓':'—') + '</td><td>' + (d.sport?'✓':'—') + '</td>' +
+      '<td>' + esc(d.journalText||'') + '</td><td>' + esc(d.objectifNote||'') + '</td>' +
+      '<td>' + (d.depense!=null && d.depense!=='' ? d.depense + ' FCFA' : '—') + '</td>' +
+    '</tr>';
+  });
+  let done=0, total=0;
+  PROGRAMME.forEach(function(item){ if(isDayDone(item.day, data)) done++; const d=data.days[item.day]; if(d && d.depense) total += Number(d.depense); });
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Rapport — ' + esc(p.name||p.phone) + '</title>' +
+    '<style>body{font-family:sans-serif;padding:30px;color:#1a1a1a;} h1{font-size:1.4rem;} table{width:100%;border-collapse:collapse;margin-top:20px;font-size:0.82rem;} td,th{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;} th{background:#f0f0f0;}</style>' +
+    '</head><body>' +
+    '<h1>Programme GrandHeure — Rapport de fin de programme</h1>' +
+    '<p><strong>Nom :</strong> ' + esc(p.name||'—') + ' &nbsp; <strong>Téléphone :</strong> ' + esc(p.phone||'—') + '</p>' +
+    '<p><strong>Jours accomplis :</strong> ' + done + '/30 &nbsp; <strong>Total dépensé :</strong> ' + total.toLocaleString('fr-FR') + ' FCFA</p>' +
+    '<table><thead><tr><th>Jour</th><th>Thème</th><th>Lecture</th><th>Méditation</th><th>Sport</th><th>Travail sur soi</th><th>Objectif</th><th>Dépense</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<script>window.onload=function(){window.print();}<\/script>' +
+    '</body></html>';
+}
+document.getElementById('report-btn').addEventListener('click', function(){
+  if(!currentPhone){ alert('Connectez-vous d\'abord.'); return; }
+  const w = window.open('', '_blank');
+  w.document.write(buildReportHtml(appData));
+  w.document.close();
+});
+
+/* ============ ADMIN ============ */
+document.getElementById('a-submit').addEventListener('click', function(){
+  const errEl = document.getElementById('a-err');
+  if(!fbReady){ errEl.textContent = 'Base de données non configurée sur cet hébergement.'; errEl.classList.add('show'); return; }
+  const user = document.getElementById('a-user').value.trim();
+  const pass = document.getElementById('a-pass').value;
+  if(user.toLowerCase() !== ADMIN_USERNAME.toLowerCase()){
+    errEl.textContent = 'Identifiants incorrects.'; errEl.classList.add('show'); return;
+  }
+  auth.signInWithEmailAndPassword(ADMIN_EMAIL, pass).then(function(){
+    errEl.classList.remove('show');
+  }).catch(function(e){
+    errEl.textContent = 'Identifiants incorrects.';
+    errEl.classList.add('show');
+  });
+});
+document.getElementById('a-logout').addEventListener('click', function(){ if(fbReady) auth.signOut(); });
+
+async function loadAdminDashboard(){
+  const tbody = document.getElementById('admin-tbody');
+  tbody.innerHTML = '';
+  try{
+    const snap = await db.collection('participants').get();
+    document.getElementById('admin-count').textContent = snap.size;
+    snap.forEach(function(docSnap){
+      const data = docSnap.data();
+      const p = data.profile || {};
+      let done = 0, total = 0;
+      PROGRAMME.forEach(function(item){ if(isDayDone(item.day, data)) done++; const d=data.days[item.day]; if(d && d.depense) total += Number(d.depense); });
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + esc(p.name||'—') + '</td><td>' + esc(p.phone||docSnap.id) + '</td><td>' + done + '/30</td><td>' + total.toLocaleString('fr-FR') + ' FCFA</td><td></td>';
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-ghost btn-small'; btn.textContent = 'Voir';
+      btn.addEventListener('click', function(){ const w = window.open('', '_blank'); w.document.write(buildReportHtml(data)); w.document.close(); });
+      tr.lastChild.appendChild(btn);
+      tbody.appendChild(tr);
+    });
+  }catch(e){ console.error(e); document.getElementById('a-err').textContent = 'Accès refusé ou règles de sécurité non configurées.'; document.getElementById('a-err').classList.add('show'); }
+}
+
+if(fbReady){
+  auth.onAuthStateChanged(function(user){
+    const loginEl = document.getElementById('admin-login');
+    const dashEl = document.getElementById('admin-dash');
+    if(user && user.email === ADMIN_EMAIL){
+      loginEl.classList.add('hide'); dashEl.classList.add('show'); loadAdminDashboard();
+    } else {
+      loginEl.classList.remove('hide'); dashEl.classList.remove('show');
+    }
+  });
+}
+
+/* ============ LIENS DE NAVIGATION SOUMIS À INSCRIPTION ============ */
+document.querySelectorAll('.nav-gated').forEach(function(a){
+  a.addEventListener('click', function(e){
+    if(!currentPhone){
+      e.preventDefault();
+      document.getElementById('compte').scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+  });
+});
+
+/* ============ INIT ============ */
+(async function init(){
+  if(!fbReady){ document.getElementById('storage-banner').classList.add('show'); }
+  const savedPhone = localStorage.getItem('gh_phone');
+  if(savedPhone && fbReady){
+    const existing = await loadParticipant(savedPhone);
+    if(existing){ appData = existing; currentPhone = savedPhone; }
+  }
+  renderProgramme(); renderCalendar(); updateSummaries();
+  if(currentPhone){ showWelcome(); } else { showForm(); }
+  updateCountdown(); setInterval(updateCountdown, 1000);
+  checkDailyReminder();
+})();
+</script>
+
+</body>
+</html>
